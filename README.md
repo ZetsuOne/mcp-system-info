@@ -33,7 +33,7 @@
 ### 1. Перейти в папку проекта
 
 ```powershell
-cd C:\Projects\mcp-system-info
+cd C:\path\to\mcp-system-info
 ```
 
 ### 2. Создать виртуальное окружение
@@ -91,8 +91,10 @@ python server.py
 {
   "mcpServers": {
     "system-info": {
-      "command": "C:\\Projects\\mcp-system-info\\.venv\\Scripts\\python.exe",
-      "args": ["C:\\Projects\\mcp-system-info\\server.py"]
+      "command": "C:\\path\\to\\mcp-system-info\\.venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\path\\to\\mcp-system-info\\server.py"
+      ]
     }
   }
 }
