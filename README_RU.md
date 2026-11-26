@@ -9,8 +9,9 @@
 
 - `server.py` — MCP-сервер (stdio)
 - `client.py` — тестовый клиент
-- `requirements.txt` — зависимости
+- `requirements.txt` — ставит проект; зависимости объявлены в `pyproject.toml`
 - `pyproject.toml` — пакет и точка входа `mcp-system-info`
+- `tests/` — тесты парсеров (`pytest`)
 
 ## GPU: каскад сбора метрик
 
@@ -20,16 +21,22 @@
 - `gpu_util_percent` — загрузка ядра GPU (%)
 - `vram_used_gb` / `vram_total_gb` — занятая / общая видеопамять (ГБ)
 - `temperature_c` — температура (°C) или `null`, если недоступна
+- `graphics_clock_mhz` / `memory_clock_mhz` — частоты, если источник их отдаёт
+- `power_watts` / `fan_percent` / `power_limit_watts` — питание и вентилятор (NVML; иначе `null`)
 - `source` — откуда взяты данные: `nvidia` | `intel` | `amd` | `windows`
 
 Порядок сбора:
 
 1. **NVIDIA** — `nvidia-ml-py` (`pynvml`): утилизация, VRAM, температура.
 2. **Intel Arc** — если в PATH есть `xpu-smi` (Intel oneAPI / IGCL), парсится JSON-вывод.
-3. **AMD** — `amd-smi` / `rocm-smi` (JSON); на Windows без утилит — имя и объём через WMI/`Win32_VideoController`.
-4. **Windows fallback** — если вендорные источники ничего не дали: загрузка GPU и dedicated VRAM через счётчики производительности (`win32pdh` / `Get-Counter`). Температура через стандартные API обычно недоступна → безопасно `null`, без падения сервера.
+3. **AMD** — `amd-smi` / `rocm-smi` (JSON). На Windows без утилит имя и объём берутся из реестра адаптера (`HardwareInformation.qwMemorySize`) и LUID DirectX; WMI `AdapterRAM` — только запасной вариант, он врёт на картах больше 4 ГБ.
+4. **Счётчики Windows** — GPU Engine и Adapter Memory (`Dedicated Usage`, `Dedicated Limit`) через `win32pdh`, либо PowerShell `Get-Counter`, если PDH недоступен. Счётчики привязываются к адаптеру по LUID, а не по порядку в списке. Температура здесь обычно недоступна → `null`.
 
-На машинах со смешанными GPU результаты вендорных шагов объединяются (без дублей по имени). Windows-fallback включается только если предыдущие шаги ничего не нашли.
+Вендорные результаты объединяются. Windows затем добавляет только те адаптеры, которых ещё нет: встроенная Intel рядом с дискретной NVIDIA остаётся в ответе. `RTX 3060` и `RTX 3060 Ti` не склеиваются.
+
+Помимо GPU ответ содержит хост, модель CPU, число ядер, uptime, системный диск (`disk_path`, `disk_percent`) и список томов `disks`. Поле `warnings` описывает сбои сбора. Повторный вызов в пределах 1.5 с возвращает тот же снимок.
+
+Аргумент `fast: true` пропускает блокирующий замер CPU и второй сэмпл счётчиков GPU. Загрузка при этом может быть `null`, объёмы памяти остаются точными. Проверка: `python client.py --fast`.
 
 ## Быстрый старт через `uvx`
 

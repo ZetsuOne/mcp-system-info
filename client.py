@@ -14,6 +14,34 @@ from mcp.types import TextContent
 SERVER_PATH = Path(__file__).resolve().parent / "server.py"
 
 
+def _print_summary(payload: dict) -> None:
+    print(
+        f"{payload.get('hostname')}  {payload.get('os')} {payload.get('os_release')}  {payload.get('arch')}"
+    )
+    print(
+        "CPU {cpu_model}  {cpu_percent}%  cores {physical}/{logical}  up {uptime}s".format(
+            cpu_model=payload.get("cpu_model"),
+            cpu_percent=payload.get("cpu_percent"),
+            physical=payload.get("cpu_count_physical"),
+            logical=payload.get("cpu_count"),
+            uptime=payload.get("uptime_seconds"),
+        )
+    )
+    print(
+        "Disk {path}  {free}/{total} GB  {percent}%".format(
+            path=payload.get("disk_path"),
+            free=payload.get("disk_free_gb"),
+            total=payload.get("disk_total_gb"),
+            percent=payload.get("disk_percent"),
+        )
+    )
+    warnings = payload.get("warnings") or []
+    if warnings:
+        print("Предупреждения:")
+        for item in warnings:
+            print(f"  - {item}")
+
+
 def _print_gpus(payload: dict) -> None:
     gpus = payload.get("gpus") or []
     print(f"\nGPU ({len(gpus)}):")
@@ -25,11 +53,15 @@ def _print_gpus(payload: dict) -> None:
         print(
             "      util={gpu_util_percent}%  "
             "vram={vram_used_gb}/{vram_total_gb} GB  "
-            "temp={temperature_c}°C".format(
+            "temp={temperature_c}°C  "
+            "power={power_watts}W  fan={fan_percent}%  limit={power_limit_watts}W".format(
                 gpu_util_percent=gpu.get("gpu_util_percent"),
                 vram_used_gb=gpu.get("vram_used_gb"),
                 vram_total_gb=gpu.get("vram_total_gb"),
                 temperature_c=gpu.get("temperature_c"),
+                power_watts=gpu.get("power_watts"),
+                fan_percent=gpu.get("fan_percent"),
+                power_limit_watts=gpu.get("power_limit_watts"),
             )
         )
 
@@ -47,13 +79,15 @@ async def main() -> None:
             tools = await session.list_tools()
             print("Доступные инструменты:", [t.name for t in tools.tools])
 
-            result = await session.call_tool("get_system_info", {})
+            fast = "--fast" in sys.argv[1:]
+            result = await session.call_tool("get_system_info", {"fast": fast})
             print("\nРезультат get_system_info:")
 
             if result.structured_content is not None:
                 payload = result.structured_content
                 print(json.dumps(payload, indent=2, ensure_ascii=False))
                 if isinstance(payload, dict):
+                    _print_summary(payload)
                     _print_gpus(payload)
             else:
                 for block in result.content:
@@ -64,6 +98,7 @@ async def main() -> None:
                         except json.JSONDecodeError:
                             payload = None
                         if isinstance(payload, dict):
+                            _print_summary(payload)
                             _print_gpus(payload)
 
 

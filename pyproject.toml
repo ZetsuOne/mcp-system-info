@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-system-info"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local MCP server for CPU, RAM, disk, and GPU telemetry (NVIDIA / Intel Arc / AMD / Windows)"
 readme = "README.md"
 license = "MIT"
@@ -39,6 +39,9 @@ dependencies = [
     "pywin32>=306; platform_system == 'Windows'",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
 [project.urls]
 Homepage = "https://github.com/ZetsuOne/mcp-system-info"
 Repository = "https://github.com/ZetsuOne/mcp-system-info"
@@ -58,4 +61,8 @@ include = [
     "README.md",
     "README_RU.md",
     "LICENSE",
+    "tests",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
